@@ -1,4 +1,4 @@
-FILENAME = hello
+FILENAME = init
 DEVICE = m32u4
 PORT = /dev/bus/usb/001/004
 COMPILE = avr-gcc -Wall -Os -mmcu=atmega32u4
