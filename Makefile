@@ -1,6 +1,6 @@
 FILENAME = init
 DEVICE = m32u4
-PORT = /dev/bus/usb/001/004
+PORT = /dev/bus/usb/001/002
 COMPILE = avr-gcc -Wall -Os -mmcu=atmega32u4
 PROGRAMER = usbasp-clone
 BINARIES_DIR = bin

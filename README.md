@@ -2,8 +2,9 @@
 
 A collection of easy programs for microcontroller `Atmega32u4` placed on `Arduino pro micro`. The set contains of:
  + `init.c` - Blinking led
- + `hello.c` - Sending serial signal with string message through UART protocol.
- + `receiver.c` - Receiving (UART) signal turning led on and of
+ + `hello.c` - Sending serial signal with string message through UART serial protocol.
+ + `receiver.c` - Receiving UART signal and sending message with the signal received
+ + `interrupt_receiver.c` - Receiving UART signal and sending message back [but the receiving is done through interrupts]
 
  ## Building and Uploading
 
@@ -17,8 +18,19 @@ A collection of easy programs for microcontroller `Atmega32u4` placed on `Arduin
 
 ## Additional information
 
-### Uart
+List of usefull commands for managing usb connections in wsl.
 
-Uart comunication is done through uart-to-usb converter. The signal is received with [RealTerm](https://realterm.sourceforge.io/) software.
+Listing available usb connections
+> usbipd wsl list
+
+attaching usb to wsl
+> usbipd wsl attach --busid \<busid\>
+
+dettaching usb from wsl
+> usbipd wsl dettach --busid \<busid\>
+
+### Serial software
+
+Signal receiving is done with [RealTerm](https://realterm.sourceforge.io/) software.
 
 

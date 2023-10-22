@@ -36,11 +36,6 @@ uint16_t USART_get_ubrr( uint16_t baud ) {
     return (F_CPU/((unsigned long)speed*(unsigned long)baud)) - 1;
 }
 
-void flush_udr() {
-    unsigned char tmp;
-    tmp = UDR1;
-}
-
 void send_char( unsigned char ch ) {
     while( !(UCSR1A & (1 << UDRE1)) );
     UDR1 = ch;
@@ -54,49 +49,20 @@ void send_string( const char *string ) {
     
 }
 
-void read_char(unsigned char *buff) {
-
-    while( !(UCSR1A & (1 << RXC1)) );
-    *buff = UDR1;
-
-}
-
-int isn_null(unsigned char c) {
-    return c;
-}
-
 int main(void)
 {
     USART_Init(USART_get_ubrr( 4800 ));
-
-
-    unsigned char char_buff;
-    unsigned char buff[BUFFER_SIZE];
-    uint8_t buff_iter = 0;
+    DDRF = 0x01;
 
     while(1)
     {
-        // wait for signal from rx
-        do {
-            // read input
-            read_char(&char_buff);
 
-            // save char
-            buff[buff_iter] = char_buff;
-
-            // check
-            send_string((char *)&char_buff);
-
-        } while ( isn_null(char_buff) && buff_iter++ < BUFFER_SIZE - 1 );
-
-        // if string excedes buffer size than NULL must be writen manually
-        buff[buff_iter] = '\0';
-
-        //reset buff
-        buff_iter = 0;
-
-        send_string("> received: ");
-        send_string((char *)buff);
+        PORTF = 0b10000000;            // PC0 = High = Vcc
+        send_string("hello fien c:");
         send_string("\r\n");
+        _delay_ms(250);
+        
+        PORTF = 0b00000000;            // PC0 = Low = 0v
+        _delay_ms(250);
     }
 }
