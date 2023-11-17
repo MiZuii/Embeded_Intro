@@ -1,4 +1,5 @@
 FILENAME = i2c_disp
+DIRECTORY = twi
 DEVICE = m32u4
 PORT = /dev/bus/usb/001/002
 COMPILE = avr-gcc
@@ -7,10 +8,10 @@ PROGRAMER = usbasp-clone
 BINARIES_DIR = bin
 
 all:
-	make $(FILENAME)
+	make $(DIRECTORY)/$(FILENAME)
 
-$(FILENAME): $(FILENAME).c
-	$(COMPILE) $(FLAGS) -c $(FILENAME).c -o $(BINARIES_DIR)/$(FILENAME).o
+$(DIRECTORY)/$(FILENAME): $(DIRECTORY)/$(FILENAME).c
+	$(COMPILE) $(FLAGS) -c $(DIRECTORY)/$(FILENAME).c -o $(BINARIES_DIR)/$(FILENAME).o
 	$(COMPILE) $(FLAGS) -o $(BINARIES_DIR)/$(FILENAME).elf  $(BINARIES_DIR)/$(FILENAME).o
 	avr-objcopy -j .text -j .data -O ihex $(BINARIES_DIR)/$(FILENAME).elf $(BINARIES_DIR)/$(FILENAME).hex
 
