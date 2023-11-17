@@ -10,7 +10,7 @@
 #include <avr/interrupt.h>
 
 volatile uint8_t buff_iter = 0;
-unsigned char buff[BUFFER_SIZE];
+volatile unsigned char buff[BUFFER_SIZE];
 
 
 uint16_t USART_get_ubrr( uint16_t baud ) {
