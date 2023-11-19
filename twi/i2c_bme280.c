@@ -18,8 +18,7 @@
 #define TWI_FAILURE -1 /* main twi exit error */
 #define TWI_SUCCESS 0 /* returned on corrent behaviour of twi */
 
-char addr_buff[4];
-uint8_t stat = 0;
+#define BIT_SIZEOF(x) sizeof(x)*8
 
 /* ---------------------------------- USART --------------------------------- */
 
@@ -77,8 +76,76 @@ void send_string( const char *string ) {
     
 }
 
-int not_eot_char(unsigned char c) {
-    return c;
+void send_uint16(uint16_t num) {
+    char buff[BIT_SIZEOF(num) + 1];
+    sprintf(buff, "%d", num);
+    buff[6] = '\0';
+    send_string(buff);
+
+    send_string(" - ");
+
+    /*binary conversion*/
+    for(uint8_t i=BIT_SIZEOF(num); i > 0; i--) {
+        buff[i-1] = num%2 ? '1' : '0';
+        num = num >> 1;
+    }
+    buff[BIT_SIZEOF(num)] = '\0';
+    send_string(buff);
+    send_string("\r\n");
+}
+
+void send_uint32(uint32_t num) {
+    char buff[BIT_SIZEOF(num) + 1];
+    sprintf(buff, "%ld", num);
+    buff[10] = '\0';
+    send_string(buff);
+    
+    send_string(" - ");
+
+    /*binary conversion*/
+    for(uint8_t i=BIT_SIZEOF(num); i > 0; i--) {
+        buff[i-1] = num%2 ? '1' : '0';
+        num = num >> 1;
+    }
+    buff[BIT_SIZEOF(num)] = '\0';
+    send_string(buff);
+    send_string("\r\n");
+}
+
+void send_int16(int16_t num) {
+    char buff[BIT_SIZEOF(num) + 1];
+    sprintf(buff, "%d", num);
+    buff[7] = '\0';
+    send_string(buff);
+    
+    send_string(" - ");
+
+    /*binary conversion*/
+    for(uint8_t i=BIT_SIZEOF(num); i > 0; i--) {
+        buff[i-1] = num%2 ? '1' : '0';
+        num = num >> 1;
+    }
+    buff[BIT_SIZEOF(num)] = '\0';
+    send_string(buff);
+    send_string("\r\n");
+}
+
+void send_int32(int32_t num) {
+    char buff[BIT_SIZEOF(num) + 1];
+    sprintf(buff, "%ld", num);
+    buff[11] = '\0';
+    send_string(buff);
+    
+    send_string(" - ");
+
+    /*binary conversion*/
+    for(uint8_t i=BIT_SIZEOF(num); i > 0; i--) {
+        buff[i-1] = num%2 ? '1' : '0';
+        num = num >> 1;
+    }
+    buff[BIT_SIZEOF(num)] = '\0';
+    send_string(buff);
+    send_string("\r\n");
 }
 
 /* ----------------------------------- I2C ---------------------------------- */
@@ -324,6 +391,63 @@ ISR(USART1_RX_vect) {
 #define BME_BURST_2_DIG 0xE1
 #define BME_BURST_2_DIG_SIZE 7
 
+#define BME_CTRL_REG 0xF4
+
+/* ----------------------------- CONFIG DEFINES ----------------------------- */
+
+#define BME_REG_CTRL_HUM 0xF2
+#define BME_REG_CTRL_MEAS 0xF4
+#define BME_REG_CONFIG 0xF5
+
+/*oversampling values*/
+#define BME_SAMPLING_SKIP   0x00
+#define BME_SAMPLING_X1     0x01
+#define BME_SAMPLING_X2     0x02
+#define BME_SAMPLING_X4     0x03
+#define BME_SAMPLING_X8     0x04
+#define BME_SAMPLING_X16    0x05
+
+/*modes*/
+#define BME_MODE_NORMAL 0x03
+#define BME_MODE_FORCED 0x01
+#define BME_MODE_SLEEP  0x00
+
+/*standby time*/
+#define BME_STANDBY_T_0_5   0x00
+#define BME_STANDBY_T_62_5  0x01
+#define BME_STANDBY_T_125   0x02
+#define BME_STANDBY_T_250   0x03
+#define BME_STANDBY_T_500   0x04
+#define BME_STANDBY_T_1000  0x05
+#define BME_STANDBY_T_10    0x06
+#define BME_STANDBY_T_20    0x07
+
+/*filter settings*/
+#define BME_FILTER_OFF  0x00
+#define BME_FILTER_2    0x01
+#define BME_FILTER_4    0x02
+#define BME_FILTER_8    0x03
+#define BME_FILTER_16   0x04
+
+int BME_config(uint8_t T_oversampling, uint8_t P_oversampling, uint8_t H_oversampling, uint8_t mode, uint8_t IIR_mode, uint8_t standby_time) {
+
+    /* Caution! - the ctrl_hum register updates only after writeing to ctrl_meas register. */
+
+    uint8_t reg_ctrl_hum = H_oversampling;
+    uint8_t reg_ctrl_meas = (T_oversampling << 5) | (P_oversampling << 2) | mode;
+    uint8_t reg_config = (standby_time << 5) | (IIR_mode << 2);
+
+    uint8_t data_buff[6];
+    data_buff[0] = BME_REG_CTRL_HUM;
+    data_buff[1] = reg_ctrl_hum;
+    data_buff[2] = BME_REG_CTRL_MEAS;
+    data_buff[3] = reg_ctrl_meas;
+    data_buff[4] = BME_REG_CONFIG;
+    data_buff[5] = reg_config;
+
+    return TWI_transmit(BME_SLAVE_ADDR, data_buff, 6);
+}
+
 int BME_burst_read(uint8_t *data, size_t data_size, uint8_t burst_addr) {
     uint8_t loc_state;
 
@@ -397,6 +521,7 @@ typedef int32_t BME280_S32_t;
 typedef uint32_t BME280_U32_t;
 typedef int64_t BME280_S64_t;
 BME280_S32_t t_fine;
+
 struct bme_dig
 {
     uint16_t dig_T1;
@@ -419,17 +544,28 @@ struct bme_dig
     int8_t dig_H6;
 };
 
+struct bme_res
+{
+    int32_t temp;
+    uint32_t pres;
+    uint32_t humi;
+};
 
-BME280_S32_t BME280_compensate_T_int32(BME280_S32_t adc_T, struct bme_dig *dig) {
+
+BME280_S32_t BME280_compensate_T_int32(uint32_t adc_T, struct bme_dig *dig) {
     BME280_S32_t var1, var2, T;
-    var1  = ((((adc_T>>3 - ((BME280_S32_t)dig->dig_T1<<1))) * ((BME280_S32_t)dig->dig_T2)) >> 11);
-    var2  = (((((adc_T>>4) - ((BME280_S32_t)dig->dig_T1)) * ((adc_T>>4) - ((BME280_S32_t)dig->dig_T1))) >> 12) *    ((BME280_S32_t)dig->dig_T3)) >> 14;  
+    var1  = ((((adc_T>>3) - ((BME280_S32_t)dig->dig_T1<<1))) * ((BME280_S32_t)dig->dig_T2)) >> 11;
+    var2  = (((((adc_T>>4) - ((BME280_S32_t)dig->dig_T1)) * ((adc_T>>4) - ((BME280_S32_t)dig->dig_T1))) >> 12) * ((BME280_S32_t)dig->dig_T3)) >> 14;  
     t_fine = var1 + var2;
+    // send_string("var1 ");
+    // send_int32(var1);
+    // send_string("var2 ");
+    // send_int32(var2);
     T  = (t_fine * 5 + 128) >> 8;
     return T;
 }
 
-BME280_U32_t BME280_compensate_P_int64(BME280_S32_t adc_P, struct bme_dig *dig) {
+BME280_U32_t BME280_compensate_P_int64(uint32_t adc_P, struct bme_dig *dig) {
     BME280_S64_t var1, var2, p;
     var1 = ((BME280_S64_t)t_fine) - 128000;
     var2 = var1 * var1 * (BME280_S64_t)dig->dig_P6;
@@ -448,7 +584,7 @@ BME280_U32_t BME280_compensate_P_int64(BME280_S32_t adc_P, struct bme_dig *dig) 
     return (BME280_U32_t)p;
 }
 
-BME280_U32_t bme280_compensate_H_int32(BME280_S32_t adc_H, struct bme_dig *dig) {
+BME280_U32_t BME280_compensate_H_int32(uint32_t adc_H, struct bme_dig *dig) {
     BME280_S32_t v_x1_u32r;
     v_x1_u32r = (t_fine - ((BME280_S32_t)76800));
     v_x1_u32r = (((((adc_H << 14) - (((BME280_S32_t)dig->dig_H4) << 20) - (((BME280_S32_t)dig->dig_H5) * v_x1_u32r)) + ((BME280_S32_t)16384)) >> 15) * (((((((v_x1_u32r * ((BME280_S32_t)dig->dig_H6)) >> 10) * (((v_x1_u32r * ((BME280_S32_t)dig->dig_H3)) >> 11) + ((BME280_S32_t)32768))) >> 10) + ((BME280_S32_t)2097152)) * ((BME280_S32_t)dig->dig_H2) + 8192) >> 14));
@@ -473,8 +609,8 @@ int BME_fill_dig(struct bme_dig *dig) {
     }
 
     dig->dig_T1 = ((uint16_t)bme_dig_buff[1] << 8) | (uint16_t)bme_dig_buff[0];
-    dig->dig_T2 = ((uint16_t)bme_dig_buff[3] << 8) | (uint16_t)bme_dig_buff[2];
-    dig->dig_T3 = ((uint16_t)bme_dig_buff[5] << 8) | (uint16_t)bme_dig_buff[4];
+    dig->dig_T2 = (int16_t)((uint16_t)bme_dig_buff[3] << 8) | (uint16_t)bme_dig_buff[2];
+    dig->dig_T3 = (int16_t)((uint16_t)bme_dig_buff[5] << 8) | (uint16_t)bme_dig_buff[4];
     dig->dig_P1 = ((uint16_t)bme_dig_buff[7] << 8) | (uint16_t)bme_dig_buff[6];
     dig->dig_P2 = ((uint16_t)bme_dig_buff[9] << 8) | (uint16_t)bme_dig_buff[8];
     dig->dig_P3 = ((uint16_t)bme_dig_buff[11] << 8) | (uint16_t)bme_dig_buff[10];
@@ -490,35 +626,84 @@ int BME_fill_dig(struct bme_dig *dig) {
     dig->dig_H4 = ((uint16_t)bme_dig_buff[28] << 4) | (bme_dig_buff[29] && 0x0E);
     dig->dig_H5 = ((uint16_t)bme_dig_buff[30] << 4) | (bme_dig_buff[29] >> 4);
     dig->dig_H6 = bme_dig_buff[31];
+
+    return 0;
 }
 
-int BME_refractor_data(uint8_t *raw) {
-    
+char msg_buff[17];
+
+void BME_refractor_data(uint8_t *raw, struct bme_dig *dig, struct bme_res *res) {
+    uint32_t adc_P = ((uint32_t)raw[0] << 12) | ((uint32_t)raw[1] << 4) | ((uint32_t)raw[2] >> 4);
+    uint32_t adc_T = ((uint32_t)raw[3] << 12) | ((uint32_t)raw[4] << 4) | ((uint32_t)raw[5] >> 4);
+    uint32_t adc_H = ((uint32_t)raw[6] << 8) | (uint32_t)raw[7];
+
+    res->temp = BME280_compensate_T_int32(adc_T, dig);
+    res->pres = BME280_compensate_P_int64(adc_P, dig);
+    res->humi = BME280_compensate_H_int32(adc_H, dig);
+
+    // send_string("raw ");
+    // send_uint32(adc_T);
+    // send_string("res ");
+    // send_int32(res->temp);
+}
+
+int BME_id_check() {
+    uint8_t id, loc_state;
+    loc_state = BME_burst_read(&id, 1, 0xD0);
+    if(loc_state) {
+        return loc_state;
+    }
+    send_uint16(id);
+    return 0;
 }
 
 /* ---------------------------------- MAIN ---------------------------------- */
 
-uint8_t bme_buff[BME_PTH_SIZE];
-
 int main(void)
 {
     USART_Init(4800);
-    TWI_init(TWI_get_baud_rate(100000)); /* 100kHz speed */
+    TWI_init(TWI_get_baud_rate(100000)); /* 150kHz speed */
+
+    struct bme_dig dig;
+    struct bme_res res;
+    uint8_t stat = 0;
+    uint8_t bme_buff[BME_PTH_SIZE];
+
+    stat = BME_config(BME_SAMPLING_X1, BME_SAMPLING_X1, BME_SAMPLING_X1, BME_MODE_NORMAL, BME_FILTER_2, BME_STANDBY_T_250);
+    if(stat) {
+        send_string("Failed config\r\n");
+        return 1;
+    }
+
+    _delay_ms(50);
+
+    stat = BME_fill_dig(&dig);
+    if(stat) {
+        send_string("Failed retriveing the dig_ registers\r\n");
+        return 1;
+    }
+
+    _delay_ms(50);
+
+    while(1) {
+        BME_id_check();
+        _delay_ms(1000);
+    }
 
     while(1)
     {
         _delay_ms(2000);
 
-        /* perform a burst read from 0xF7 to 0xF3 */
-        stat = BME_get_data(bme_buff, 9);
-        if(stat == 0) {
-            send_string("Successfully retrived data from sensor\r\n");
-        } else {
-            send_string("Error while retriving data: ");
-            sprintf(addr_buff, "%d", stat);
-            addr_buff[3] = '\0';
-            send_string(addr_buff);
-            send_string("\r\n");
+        /*get and refractor data*/
+        stat = BME_get_data(bme_buff, BME_PTH_SIZE);
+        BME_refractor_data(bme_buff, &dig, &res);
+
+        if(stat) {
+            return 1;
         }
+
+        /*print results*/
+        // send_string("Temperature: ");
+        // send_int32(res.temp);
     }
 }

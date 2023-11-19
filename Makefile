@@ -1,4 +1,4 @@
-FILENAME = i2c_disp
+FILENAME = i2c_bme280
 DIRECTORY = twi
 DEVICE = m32u4
 PORT = /dev/bus/usb/001/002
