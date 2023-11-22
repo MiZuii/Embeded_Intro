@@ -5,3 +5,6 @@
 
 ## TWI Devices
 + **GY-BME280** - No Circut Schematics found. Sensor datasheet is `BST-BME280-DS002-1509607.pdf`
+
+## Connection scheme
+For all except `st7789_disp`. todo.
